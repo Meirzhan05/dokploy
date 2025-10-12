@@ -44,7 +44,7 @@ const Schema = z.object({
 		message: "Name is required",
 	}),
 	description: z.string().optional(),
-	ipAddress: z.string().min(1, {
+	ipAddress: z.string().trim().min(1, {
 		message: "IP Address is required",
 	}),
 	port: z.number().optional(),
