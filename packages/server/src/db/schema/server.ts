@@ -121,7 +121,9 @@ const createSchema = createInsertSchema(server, {
 	serverId: z.string().min(1),
 	name: z.string().min(1),
 	description: z.string().optional(),
-	ipAddress: z.string().transform(val => val.trim()),
+	ipAddress: z.string().trim().min(1, {
+		message: "IP address is required",
+	}),
 });
 
 export const apiCreateServer = createSchema

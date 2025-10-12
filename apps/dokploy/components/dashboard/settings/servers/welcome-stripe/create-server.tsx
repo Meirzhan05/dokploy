@@ -34,9 +34,9 @@ const Schema = z.object({
 		message: "Name is required",
 	}),
 	description: z.string().optional(),
-	ipAddress: z.string().min(1, {
+	ipAddress: z.string().trim().min(1, {
 		message: "IP Address is required",
-	}).transform(val => val.trim()),
+	}),
 	port: z.number().optional(),
 	username: z.string().optional(),
 	sshKeyId: z.string().min(1, {
