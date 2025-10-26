@@ -8,7 +8,6 @@
 	"settings.server.domain.form.certificate.placeholder": "証明書を選択",
 	"settings.server.domain.form.certificateOptions.none": "なし",
 	"settings.server.domain.form.certificateOptions.letsencrypt": "Let's Encrypt (デフォルト)",
-
 	"settings.server.webServer.title": "ウェブサーバー",
 	"settings.server.webServer.description": "ウェブサーバーをリロードまたはクリーンアップします",
 	"settings.server.webServer.actions": "アクション",
@@ -25,13 +24,12 @@
 	"settings.server.webServer.storage.cleanDockerBuilder": "Docker ビルダー＆システムをクリーンアップ",
 	"settings.server.webServer.storage.cleanMonitoring": "モニタリングをクリーンアップ",
 	"settings.server.webServer.storage.cleanAll": "すべてをクリーンアップ",
-
 	"settings.profile.title": "アカウント",
 	"settings.profile.description": "ここでプロフィールの詳細を変更できます",
+	"settings.profile.name": "名前",
 	"settings.profile.email": "メールアドレス",
 	"settings.profile.password": "パスワード",
 	"settings.profile.avatar": "アバター",
-
 	"settings.appearance.title": "外観",
 	"settings.appearance.description": "ダッシュボードのテーマをカスタマイズ",
 	"settings.appearance.theme": "テーマ",

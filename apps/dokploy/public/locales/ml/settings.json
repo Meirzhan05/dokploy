@@ -9,7 +9,6 @@
 	"settings.server.domain.form.certificate.placeholder": "ഒരു സർട്ടിഫിക്കറ്റ് തിരഞ്ഞെടുക്കുക",
 	"settings.server.domain.form.certificateOptions.none": "ഒന്നുമില്ല",
 	"settings.server.domain.form.certificateOptions.letsencrypt": "ലെറ്റ്സ് എൻക്രിപ്റ്റ്",
-
 	"settings.server.webServer.title": "വെബ് സർവർ",
 	"settings.server.webServer.description": "വെബ് സർവർ റീലോഡ് ചെയ്യുക അല്ലെങ്കിൽ ശുചീകരിക്കുക.",
 	"settings.server.webServer.actions": "നടപടികൾ",
@@ -34,13 +33,12 @@
 	"settings.server.webServer.storage.cleanDockerBuilder": "ഡോക്കർ ബിൽഡറും സിസ്റ്റവും ശുചീകരിക്കുക",
 	"settings.server.webServer.storage.cleanMonitoring": "മോണിറ്ററിംഗ് ശുചീകരിക്കുക",
 	"settings.server.webServer.storage.cleanAll": "എല്ലാം ശുചീകരിക്കുക",
-
 	"settings.profile.title": "അക്കൗണ്ട്",
 	"settings.profile.description": "നിങ്ങളുടെ പ്രൊഫൈൽ വിശദാംശങ്ങൾ ഇവിടെ മാറ്റുക.",
+	"settings.profile.name": "പേര്",
 	"settings.profile.email": "ഇമെയിൽ",
 	"settings.profile.password": "പാസ്വേഡ്",
 	"settings.profile.avatar": "അവതാർ",
-
 	"settings.appearance.title": "ദൃശ്യമാനം",
 	"settings.appearance.description": "നിങ്ങളുടെ ഡാഷ്ബോർഡിന്റെ തീം ഇഷ്ടാനുസൃതമാക്കുക.",
 	"settings.appearance.theme": "തീം",
@@ -50,7 +48,6 @@
 	"settings.appearance.themes.system": "സിസ്റ്റം",
 	"settings.appearance.language": "ഭാഷ",
 	"settings.appearance.languageDescription": "നിങ്ങളുടെ ഡാഷ്ബോർഡിന് ഒരു ഭാഷ തിരഞ്ഞെടുക്കുക",
-
 	"settings.terminal.connectionSettings": "കണക്ഷൻ ക്രമീകരണങ്ങൾ",
 	"settings.terminal.ipAddress": "IP വിലാസം",
 	"settings.terminal.port": "പോർട്ട്",
