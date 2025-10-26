@@ -8,7 +8,6 @@
 	"settings.server.domain.form.certificate.placeholder": "Selecione um Certificado",
 	"settings.server.domain.form.certificateOptions.none": "Nenhum",
 	"settings.server.domain.form.certificateOptions.letsencrypt": "Let's Encrypt (Padrão)",
-
 	"settings.server.webServer.title": "Servidor web",
 	"settings.server.webServer.description": "Limpar e recarregar servidor web.",
 	"settings.server.webServer.actions": "Ações",
@@ -25,13 +24,12 @@
 	"settings.server.webServer.storage.cleanDockerBuilder": "Limpar Docker Builder & System",
 	"settings.server.webServer.storage.cleanMonitoring": "Limpar Monitoramento",
 	"settings.server.webServer.storage.cleanAll": "Limpar Tudo",
-
 	"settings.profile.title": "Conta",
 	"settings.profile.description": "Altere os detalhes do seu perfil aqui.",
+	"settings.profile.name": "Nome",
 	"settings.profile.email": "Email",
 	"settings.profile.password": "Senha",
 	"settings.profile.avatar": "Avatar",
-
 	"settings.appearance.title": "Aparencia",
 	"settings.appearance.description": "Personalize o tema do seu dashboard.",
 	"settings.appearance.theme": "Tema",

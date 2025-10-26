@@ -177,10 +177,10 @@ export const ProfileForm = () => {
 												name="name"
 												render={({ field }) => (
 													<FormItem>
-														<FormLabel>Name</FormLabel>
+														<FormLabel>{t("settings.profile.name")}</FormLabel>
 														<FormControl>
 															<Input
-																placeholder="Enter your name"
+																placeholder={t("settings.profile.name")}
 																{...field}
 															/>
 														</FormControl>

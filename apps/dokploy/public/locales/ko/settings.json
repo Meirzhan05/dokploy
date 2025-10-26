@@ -8,7 +8,6 @@
 	"settings.server.domain.form.certificate.placeholder": "인증서 선택",
 	"settings.server.domain.form.certificateOptions.none": "없음",
 	"settings.server.domain.form.certificateOptions.letsencrypt": "Let's Encrypt (기본)",
-
 	"settings.server.webServer.title": "웹 서버",
 	"settings.server.webServer.description": "웹 서버를 재시작하거나 정리합니다.",
 	"settings.server.webServer.actions": "작업",
@@ -25,13 +24,12 @@
 	"settings.server.webServer.storage.cleanDockerBuilder": "도커 빌더 & 시스템 정리",
 	"settings.server.webServer.storage.cleanMonitoring": "모니터링 데이터 정리",
 	"settings.server.webServer.storage.cleanAll": "전체 정리",
-
 	"settings.profile.title": "계정",
 	"settings.profile.description": "여기에서 프로필 세부 정보를 변경하세요.",
+	"settings.profile.name": "이름",
 	"settings.profile.email": "이메일",
 	"settings.profile.password": "비밀번호",
 	"settings.profile.avatar": "아바타",
-
 	"settings.appearance.title": "외관",
 	"settings.appearance.description": "대시보드의 테마를 사용자 설정합니다.",
 	"settings.appearance.theme": "테마",

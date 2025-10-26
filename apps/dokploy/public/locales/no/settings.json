@@ -8,7 +8,6 @@
 	"settings.server.domain.form.certificate.placeholder": "Velg et sertifikat",
 	"settings.server.domain.form.certificateOptions.none": "Ingen",
 	"settings.server.domain.form.certificateOptions.letsencrypt": "Let's Encrypt",
-
 	"settings.server.webServer.title": "Webserver",
 	"settings.server.webServer.description": "Last på nytt eller rens webserveren.",
 	"settings.server.webServer.actions": "Handlinger",
@@ -33,13 +32,12 @@
 	"settings.server.webServer.storage.cleanDockerBuilder": "Rens Docker Builder og System",
 	"settings.server.webServer.storage.cleanMonitoring": "Rens overvåking",
 	"settings.server.webServer.storage.cleanAll": "Rens alt",
-
 	"settings.profile.title": "Konto",
 	"settings.profile.description": "Endre detaljene for profilen din her.",
+	"settings.profile.name": "Navn",
 	"settings.profile.email": "Epost",
 	"settings.profile.password": "Passord",
 	"settings.profile.avatar": "Avatar",
-
 	"settings.appearance.title": "Utseende",
 	"settings.appearance.description": "Tilpass temaet for dashbordet ditt.",
 	"settings.appearance.theme": "Tema",

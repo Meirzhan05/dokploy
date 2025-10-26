@@ -9,7 +9,6 @@
 	"settings.server.domain.form.certificate.placeholder": "Выберите сертификат",
 	"settings.server.domain.form.certificateOptions.none": "Нет",
 	"settings.server.domain.form.certificateOptions.letsencrypt": "Let's Encrypt",
-
 	"settings.server.webServer.title": "Веб-сервер",
 	"settings.server.webServer.description": "Перезагрузка или очистка веб-сервера.",
 	"settings.server.webServer.actions": "Действия",
@@ -34,13 +33,12 @@
 	"settings.server.webServer.storage.cleanDockerBuilder": "Очистить Docker Builder и систему",
 	"settings.server.webServer.storage.cleanMonitoring": "Очистить мониторинг",
 	"settings.server.webServer.storage.cleanAll": "Очистить все",
-
 	"settings.profile.title": "Аккаунт",
 	"settings.profile.description": "Измените данные вашего профиля.",
+	"settings.profile.name": "Имя",
 	"settings.profile.email": "Email",
 	"settings.profile.password": "Пароль",
 	"settings.profile.avatar": "Аватар",
-
 	"settings.appearance.title": "Внешний вид",
 	"settings.appearance.description": "Настройте тему Dokploy.",
 	"settings.appearance.theme": "Тема",
@@ -50,7 +48,6 @@
 	"settings.appearance.themes.system": "Системная",
 	"settings.appearance.language": "Язык",
 	"settings.appearance.languageDescription": "Выберите язык для панели управления",
-
 	"settings.terminal.connectionSettings": "Настройки подключения",
 	"settings.terminal.ipAddress": "IP адрес",
 	"settings.terminal.port": "Порт",

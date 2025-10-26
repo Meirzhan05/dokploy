@@ -9,7 +9,6 @@
 	"settings.server.domain.form.certificate.placeholder": "Оберіть сертифікат",
 	"settings.server.domain.form.certificateOptions.none": "Відсутній",
 	"settings.server.domain.form.certificateOptions.letsencrypt": "Let's Encrypt",
-
 	"settings.server.webServer.title": "Веб-сервер",
 	"settings.server.webServer.description": "Перезавантажте або очистьте веб-сервер.",
 	"settings.server.webServer.actions": "Дії",
@@ -34,13 +33,12 @@
 	"settings.server.webServer.storage.cleanDockerBuilder": "Очистити Docker Builder і систему",
 	"settings.server.webServer.storage.cleanMonitoring": "Очистити моніторинг",
 	"settings.server.webServer.storage.cleanAll": "Очистити все",
-
 	"settings.profile.title": "Обліковий запис",
 	"settings.profile.description": "Змініть дані вашого профілю.",
+	"settings.profile.name": "Ім'я",
 	"settings.profile.email": "Електронна пошта",
 	"settings.profile.password": "Пароль",
 	"settings.profile.avatar": "Аватар",
-
 	"settings.appearance.title": "Зовнішній вигляд",
 	"settings.appearance.description": "Налаштуйте тему вашої панелі керування.",
 	"settings.appearance.theme": "Тема",
@@ -50,7 +48,6 @@
 	"settings.appearance.themes.system": "Системна",
 	"settings.appearance.language": "Мова",
 	"settings.appearance.languageDescription": "Оберіть мову для вашої панелі керування",
-
 	"settings.terminal.connectionSettings": "Налаштування з'єднання",
 	"settings.terminal.ipAddress": "IP-адреса",
 	"settings.terminal.port": "Порт",

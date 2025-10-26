@@ -8,7 +8,6 @@
 	"settings.server.domain.form.certificate.placeholder": "Bir sertifika seçin",
 	"settings.server.domain.form.certificateOptions.none": "Hiçbiri",
 	"settings.server.domain.form.certificateOptions.letsencrypt": "Let's Encrypt (Varsayılan)",
-
 	"settings.server.webServer.title": "Web Sunucusu",
 	"settings.server.webServer.description": "Web sunucusunu yeniden yükleyin veya temizleyin.",
 	"settings.server.webServer.actions": "İşlemler",
@@ -25,13 +24,12 @@
 	"settings.server.webServer.storage.cleanDockerBuilder": "Docker Builder ve Sistemi Temizle",
 	"settings.server.webServer.storage.cleanMonitoring": "İzlemeyi Temizle",
 	"settings.server.webServer.storage.cleanAll": "Hepsini temizle",
-
 	"settings.profile.title": "Hesap",
 	"settings.profile.description": "Profil detaylarınızı buradan değiştirebilirsiniz.",
+	"settings.profile.name": "İsim",
 	"settings.profile.email": "E-posta",
 	"settings.profile.password": "Şifre",
 	"settings.profile.avatar": "Profil Resmi",
-
 	"settings.appearance.title": "Görünüm",
 	"settings.appearance.description": "Kontrol panelinin temasını özelleştirin.",
 	"settings.appearance.theme": "Tema",
