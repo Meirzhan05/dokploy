@@ -31,6 +31,13 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { api } from "@/utils/api";
 import {
 	AlertTriangle,
@@ -43,7 +50,7 @@ import {
 	TrashIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+	import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { HandleProject } from "./handle-project";
 import { ProjectEnvironment } from "./project-environment";
@@ -55,14 +62,89 @@ export const ShowProjects = () => {
 	const { mutateAsync } = api.project.remove.useMutation();
 	const [searchQuery, setSearchQuery] = useState("");
 
+	// Sort state with localStorage persistence
+	const [sortBy, setSortBy] = useState<string>(() => {
+		if (typeof window !== "undefined") {
+			return localStorage.getItem("projectsSort") || "createdAt-desc";
+		}
+		return "createdAt-desc";
+	});
+
+	// Persist sort preference to localStorage
+	useEffect(() => {
+			localStorage.setItem("projectsSort", sortBy);
+	}, [sortBy]);
+
+	/**
+	 * Calculates the total number of services across all types for a project
+	 * @param project - Project object with related service arrays
+	 * @returns Total count of all services (applications, databases, compose)
+	 */
+	const calculateTotalServices = (project: any) => {
+		return (
+			(project?.mariadb?.length || 0) +
+			(project?.mongo?.length || 0) +
+			(project?.mysql?.length || 0) +
+			(project?.postgres?.length || 0) +
+			(project?.redis?.length || 0) +
+			(project?.applications?.length || 0) +
+			(project?.compose?.length || 0)
+		);
+	};
+
+	/**
+	 * Sorts an array of projects based on the sortBy state
+	 * @param projects - Array of projects to sort
+	 * @returns New sorted array (does not mutate input)
+	 */
+	const sortProjects = (projects: any[]) => {
+		const [field, direction] = sortBy.split("-");
+
+		return [...projects].sort((a, b) => {
+			let comparison = 0;
+
+			switch (field) {
+				case "name":
+					// Alphabetical comparison, case-insensitive
+					comparison = a.name.localeCompare(b.name);
+					break;
+
+				case "createdAt":
+					// Timestamp comparison
+					comparison =
+						new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+					break;
+
+				case "services":
+					// Calculate total services for both projects
+					const totalA = calculateTotalServices(a);
+					const totalB = calculateTotalServices(b);
+					comparison = totalA - totalB;
+					break;
+
+				default:
+					// Unknown field, maintain original order
+					comparison = 0;
+			}
+
+			// Reverse comparison for descending order
+			return direction === "asc" ? comparison : -comparison;
+		});
+	};
+
 	const filteredProjects = useMemo(() => {
 		if (!data) return [];
-		return data.filter(
+
+		// Step 1: Filter by search query
+		const filtered = data.filter(
 			(project) =>
 				project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
 				project.description?.toLowerCase().includes(searchQuery.toLowerCase()),
 		);
-	}, [data, searchQuery]);
+
+		// Step 2: Sort filtered results
+		return sortProjects(filtered);
+	}, [data, searchQuery, sortBy]);
 
 	return (
 		<>
@@ -98,14 +180,38 @@ export const ShowProjects = () => {
 								</div>
 							) : (
 								<>
-									<div className="w-full relative">
-										<Input
-											placeholder="Filter projects..."
-											value={searchQuery}
-											onChange={(e) => setSearchQuery(e.target.value)}
-											className="pr-10"
-										/>
-										<Search className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+									<div className="flex flex-col sm:flex-row gap-2 w-full">
+										<div className="w-full relative flex-1">
+											<Input
+												placeholder="Filter projects..."
+												value={searchQuery}
+												onChange={(e) => setSearchQuery(e.target.value)}
+												className="pr-10"
+											/>
+											<Search className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+										</div>
+
+										<Select value={sortBy} onValueChange={setSortBy}>
+											<SelectTrigger className="w-full sm:w-[240px]">
+												<SelectValue placeholder="Sort by..." />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="name-asc">Name (A–Z)</SelectItem>
+												<SelectItem value="name-desc">Name (Z–A)</SelectItem>
+												<SelectItem value="createdAt-desc">
+													Creation Date (Newest)
+												</SelectItem>
+												<SelectItem value="createdAt-asc">
+													Creation Date (Oldest)
+												</SelectItem>
+												<SelectItem value="services-desc">
+													Services (Most)
+												</SelectItem>
+												<SelectItem value="services-asc">
+													Services (Least)
+												</SelectItem>
+											</SelectContent>
+										</Select>
 									</div>
 									{filteredProjects?.length === 0 && (
 										<div className="mt-6 flex h-[50vh] w-full flex-col items-center justify-center space-y-4">
@@ -162,10 +268,10 @@ export const ShowProjects = () => {
 																	>
 																		{project.applications.length > 0 && (
 																			<DropdownMenuGroup>
-																				<DropdownMenuLabel>
-																					Applications
-																				</DropdownMenuLabel>
-																				{project.applications.map((app) => (
+															<DropdownMenuLabel>
+																Applications
+															</DropdownMenuLabel>
+															{project.applications.map((app: any) => (
 																					<div key={app.applicationId}>
 																						<DropdownMenuSeparator />
 																						<DropdownMenuGroup>
@@ -175,8 +281,8 @@ export const ShowProjects = () => {
 																									status={app.applicationStatus}
 																								/>
 																							</DropdownMenuLabel>
-																							<DropdownMenuSeparator />
-																							{app.domains.map((domain) => (
+																		<DropdownMenuSeparator />
+																		{app.domains.map((domain: any) => (
 																								<DropdownMenuItem
 																									key={domain.domainId}
 																									asChild
@@ -200,10 +306,10 @@ export const ShowProjects = () => {
 																		)}
 																		{project.compose.length > 0 && (
 																			<DropdownMenuGroup>
-																				<DropdownMenuLabel>
-																					Compose
-																				</DropdownMenuLabel>
-																				{project.compose.map((comp) => (
+															<DropdownMenuLabel>
+																Compose
+															</DropdownMenuLabel>
+															{project.compose.map((comp: any) => (
 																					<div key={comp.composeId}>
 																						<DropdownMenuSeparator />
 																						<DropdownMenuGroup>
@@ -213,8 +319,8 @@ export const ShowProjects = () => {
 																									status={comp.composeStatus}
 																								/>
 																							</DropdownMenuLabel>
-																							<DropdownMenuSeparator />
-																							{comp.domains.map((domain) => (
+																		<DropdownMenuSeparator />
+																		{comp.domains.map((domain: any) => (
 																								<DropdownMenuItem
 																									key={domain.domainId}
 																									asChild
