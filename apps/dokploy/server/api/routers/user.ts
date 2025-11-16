@@ -24,12 +24,16 @@ import { TRPCError } from "@trpc/server";
 import * as bcrypt from "bcrypt";
 import { and, asc, eq, gt } from "drizzle-orm";
 import { z } from "zod";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import {
 	adminProcedure,
 	createTRPCRouter,
 	protectedProcedure,
 	publicProcedure,
+	uploadProcedure,
 } from "../trpc";
+import { uploadProfilePictureSchema } from "@/utils/schema";
 
 const apiCreateApiKey = z.object({
 	name: z.string().min(1),
@@ -142,6 +146,95 @@ export const userRouter = createTRPCRouter({
 
 		return memberResult?.user;
 	}),
+	uploadProfilePicture: protectedProcedure
+		.use(uploadProcedure)
+		.input(uploadProfilePictureSchema)
+		.mutation(async ({ input, ctx }) => {
+			const imageFile = input.image;
+
+			// Validate file size (2MB max)
+			const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB in bytes
+			if (imageFile.size > MAX_FILE_SIZE) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Image size must be less than 2MB",
+				});
+			}
+
+			// Validate file type
+			const allowedMimeTypes = [
+				"image/jpeg",
+				"image/jpg",
+				"image/png",
+				"image/gif",
+				"image/webp",
+			];
+			if (!allowedMimeTypes.includes(imageFile.type)) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed",
+				});
+			}
+
+			try {
+				// Get the current user to check for existing custom avatar
+				const currentUser = await findUserById(ctx.user.id);
+				const oldImagePath = currentUser?.image;
+
+				// Create uploads directory if it doesn't exist
+				const uploadsDir = path.join(
+					process.cwd(),
+					"apps/dokploy/public/avatars/uploads",
+				);
+				if (!fs.existsSync(uploadsDir)) {
+					fs.mkdirSync(uploadsDir, { recursive: true });
+				}
+
+				// Generate unique filename
+				const fileExtension = path.extname(imageFile.name) || ".jpg";
+				const timestamp = Date.now();
+				const randomString = Math.random().toString(36).substring(2, 15);
+				const fileName = `${ctx.user.id}-${timestamp}-${randomString}${fileExtension}`;
+				const filePath = path.join(uploadsDir, fileName);
+
+				// Convert File to Buffer and write to disk
+				const arrayBuffer = await imageFile.arrayBuffer();
+				const buffer = Buffer.from(arrayBuffer);
+				fs.writeFileSync(filePath, buffer);
+
+				// Generate the public URL path
+				const publicPath = `/avatars/uploads/${fileName}`;
+
+				// Clean up old custom avatar if it exists and is in the uploads directory
+				if (
+					oldImagePath &&
+					oldImagePath.startsWith("/avatars/uploads/") &&
+					oldImagePath !== publicPath
+				) {
+					const oldFilePath = path.join(
+						process.cwd(),
+						"apps/dokploy/public",
+						oldImagePath,
+					);
+					if (fs.existsSync(oldFilePath)) {
+						try {
+							fs.unlinkSync(oldFilePath);
+						} catch (error) {
+							// Log but don't fail if cleanup fails
+							console.error("Failed to delete old avatar:", error);
+						}
+					}
+				}
+
+				return { imagePath: publicPath };
+			} catch (error) {
+				console.error("Error uploading profile picture:", error);
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message: "Failed to upload profile picture",
+				});
+			}
+		}),
 	update: protectedProcedure
 		.input(apiUpdateUser)
 		.mutation(async ({ input, ctx }) => {
