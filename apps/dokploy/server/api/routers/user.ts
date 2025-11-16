@@ -181,13 +181,56 @@ export const userRouter = createTRPCRouter({
 				const currentUser = await findUserById(ctx.user.id);
 				const oldImagePath = currentUser?.image;
 
+				// Determine the correct path to public directory
+				// Use __dirname to get the file location, then resolve relative to it
+				// __dirname in compiled code points to dist/server/api/routers
+				// In source code, it points to server/api/routers
+				// We need to go up to the app root (apps/dokploy)
+				let publicDir: string;
+				let uploadsDir: string;
+
+				// Try multiple strategies to find the public directory
+				// Strategy 1: Use __dirname (most reliable)
+				const dirnamePublicDir = path.resolve(__dirname, "../../../public");
+				if (fs.existsSync(dirnamePublicDir)) {
+					publicDir = dirnamePublicDir;
+					uploadsDir = path.join(dirnamePublicDir, "avatars/uploads");
+				} else {
+					// Strategy 2: Check if process.cwd() is the app directory
+					const appPublicDir = path.join(process.cwd(), "public");
+					if (fs.existsSync(appPublicDir)) {
+						publicDir = appPublicDir;
+						uploadsDir = path.join(appPublicDir, "avatars/uploads");
+					} else {
+						// Strategy 3: Check if process.cwd() is the monorepo root
+						const monorepoPublicDir = path.join(
+							process.cwd(),
+							"apps/dokploy/public",
+						);
+						if (fs.existsSync(monorepoPublicDir)) {
+							publicDir = monorepoPublicDir;
+							uploadsDir = path.join(monorepoPublicDir, "avatars/uploads");
+						} else {
+							// Final fallback: use __dirname and create if needed
+							publicDir = dirnamePublicDir;
+							uploadsDir = path.join(dirnamePublicDir, "avatars/uploads");
+						}
+					}
+				}
+
+				console.log("Public Dir:", publicDir);
+				console.log("Upload Dir:", uploadsDir);
+
 				// Create uploads directory if it doesn't exist
-				const uploadsDir = path.join(
-					process.cwd(),
-					"apps/dokploy/public/avatars/uploads",
-				);
 				if (!fs.existsSync(uploadsDir)) {
 					fs.mkdirSync(uploadsDir, { recursive: true });
+				}
+
+				// Verify directory was created
+				if (!fs.existsSync(uploadsDir)) {
+					throw new Error(
+						`Failed to create uploads directory at: ${uploadsDir}`,
+					);
 				}
 
 				// Generate unique filename
@@ -202,6 +245,13 @@ export const userRouter = createTRPCRouter({
 				const buffer = Buffer.from(arrayBuffer);
 				fs.writeFileSync(filePath, buffer);
 
+				// Verify file was written
+				if (!fs.existsSync(filePath)) {
+					throw new Error(`Failed to write file to: ${filePath}`);
+				}
+
+				console.log(`Avatar uploaded successfully to: ${filePath}`);
+
 				// Generate the public URL path
 				const publicPath = `/avatars/uploads/${fileName}`;
 
@@ -211,14 +261,11 @@ export const userRouter = createTRPCRouter({
 					oldImagePath.startsWith("/avatars/uploads/") &&
 					oldImagePath !== publicPath
 				) {
-					const oldFilePath = path.join(
-						process.cwd(),
-						"apps/dokploy/public",
-						oldImagePath,
-					);
+					const oldFilePath = path.join(publicDir, oldImagePath);
 					if (fs.existsSync(oldFilePath)) {
 						try {
 							fs.unlinkSync(oldFilePath);
+							console.log(`Deleted old avatar: ${oldFilePath}`);
 						} catch (error) {
 							// Log but don't fail if cleanup fails
 							console.error("Failed to delete old avatar:", error);
@@ -229,9 +276,11 @@ export const userRouter = createTRPCRouter({
 				return { imagePath: publicPath };
 			} catch (error) {
 				console.error("Error uploading profile picture:", error);
+				const errorMessage =
+					error instanceof Error ? error.message : "Unknown error";
 				throw new TRPCError({
 					code: "INTERNAL_SERVER_ERROR",
-					message: "Failed to upload profile picture",
+					message: `Failed to upload profile picture: ${errorMessage}`,
 				});
 			}
 		}),

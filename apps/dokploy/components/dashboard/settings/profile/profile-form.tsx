@@ -116,10 +116,20 @@ export const ProfileForm = () => {
 			form.setValue("allowImpersonation", data?.user?.allowImpersonation);
 
 			// If user has an uploaded image, set it as preview
+			// Don't clear preview if it's a data URL (user just selected a file)
 			if (userImage && userImage.startsWith("/avatars/uploads/")) {
 				setUploadPreview(userImage);
 			} else {
-				setUploadPreview(null);
+				// Only clear preview if it's not a data URL (data URLs are from file selection)
+				// This prevents clearing the preview when user just selected a file
+				setUploadPreview((prev) => {
+					// If previous preview is a data URL, keep it (user just selected a file)
+					if (prev && prev.startsWith("data:")) {
+						return prev;
+					}
+					// Otherwise, clear it
+					return null;
+				});
 			}
 
 			if (data.user.email) {
@@ -368,13 +378,13 @@ export const ProfileForm = () => {
 																			<FormLabel className="[&:has([data-state=checked])>div>img]:border-primary [&:has([data-state=checked])>div>img]:border-1 [&:has([data-state=checked])>div>img]:p-px cursor-pointer">
 																				<FormControl>
 																					<RadioGroupItem
-																						value={uploadPreview}
+																						value={uploadPreview!}
 																						className="sr-only"
 																					/>
 																				</FormControl>
 																				<div className="relative">
 																					<img
-																						src={uploadPreview}
+																						src={uploadPreview!}
 																						alt="Uploaded avatar"
 																						className="h-12 w-12 rounded-full border object-cover hover:p-px hover:border-primary transition-transform"
 																					/>
