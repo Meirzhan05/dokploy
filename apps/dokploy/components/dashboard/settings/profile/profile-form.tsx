@@ -77,6 +77,7 @@ export const ProfileForm = () => {
 	const [uploadPreview, setUploadPreview] = useState<string | null>(null);
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	const uploadedAvatarRemovedRef = useRef<boolean>(false);
 
 	const availableAvatars = useMemo(() => {
 		if (gravatarHash === null) return randomImages;
@@ -119,6 +120,7 @@ export const ProfileForm = () => {
 			// Don't clear preview if it's a data URL (user just selected a file)
 			if (userImage && userImage.startsWith("/avatars/uploads/")) {
 				setUploadPreview(userImage);
+				uploadedAvatarRemovedRef.current = false;
 			} else {
 				// Only clear preview if it's not a data URL (data URLs are from file selection)
 				// This prevents clearing the preview when user just selected a file
@@ -182,6 +184,7 @@ export const ProfileForm = () => {
 			if (result?.imagePath) {
 				form.setValue("image", result.imagePath);
 				setUploadPreview(result.imagePath);
+				uploadedAvatarRemovedRef.current = false;
 				toast.success("Profile picture uploaded successfully");
 				setSelectedFile(null);
 				if (fileInputRef.current) {
@@ -343,10 +346,48 @@ export const ProfileForm = () => {
 																<RadioGroup
 																	onValueChange={(e) => {
 																		field.onChange(e);
-																		setSelectedFile(null);
-																		setUploadPreview(null);
-																		if (fileInputRef.current) {
-																			fileInputRef.current.value = "";
+																		// If selecting an uploaded avatar, set uploadPreview to keep it visible
+																		if (e.startsWith("/avatars/uploads/")) {
+																			setUploadPreview(e);
+																			setSelectedFile(null);
+																			uploadedAvatarRemovedRef.current = false;
+																		} else {
+																			// When selecting predefined avatars, only clear temporary data URL previews
+																			// Keep uploaded avatar previews visible so user can switch back
+																			setSelectedFile(null);
+																			setUploadPreview((prev) => {
+																				// If user explicitly removed uploaded avatar, don't restore it
+																				if (uploadedAvatarRemovedRef.current) {
+																					return null;
+																				}
+																				// Keep uploaded avatar paths visible (from database or just uploaded)
+																				if (prev && prev.startsWith("/avatars/uploads/")) {
+																					return prev;
+																				}
+																				// Only restore from database if form field still has an uploaded avatar value
+																				// This means user didn't explicitly remove it (clicked X)
+																				const currentFormValue = field.value || "";
+																				if (
+																					currentFormValue &&
+																					currentFormValue.startsWith("/avatars/uploads/")
+																				) {
+																					return currentFormValue;
+																				}
+																				// Also check database, but only if form value is empty (not explicitly cleared)
+																				const userImage = data?.user?.image || "";
+																				if (
+																					!currentFormValue &&
+																					userImage &&
+																					userImage.startsWith("/avatars/uploads/")
+																				) {
+																					return userImage;
+																				}
+																				// Clear temporary data URL previews
+																				return null;
+																			});
+																			if (fileInputRef.current) {
+																				fileInputRef.current.value = "";
+																			}
 																		}
 																	}}
 																	defaultValue={field.value}
@@ -390,15 +431,36 @@ export const ProfileForm = () => {
 																					/>
 																					<button
 																						type="button"
-																						onClick={(e) => {
+																						onClick={async (e) => {
 																							e.stopPropagation();
-																							setSelectedFile(null);
-																							setUploadPreview(null);
+																							
+																							// Get current form values to preserve other fields
+																							const currentValues = form.getValues();
+																							
+																							// Immediately delete the uploaded avatar from server and database
+																							try {
+																								await mutateAsync({
+																									name: currentValues.name,
+																									email: currentValues.email,
+																									image: "", // Clear the image
+																									allowImpersonation: currentValues.allowImpersonation,
+																								});
+																								
+																								// Update UI state
+																								setSelectedFile(null);
+																								setUploadPreview(null);
+																								uploadedAvatarRemovedRef.current = true;
+																								field.onChange("");
+																								
+																								// Refresh data to reflect the change
+																								await refetch();
+																								toast.success("Uploaded avatar removed");
+																							} catch (error) {
+																								toast.error("Failed to remove uploaded avatar");
+																							}
+																							
 																							if (fileInputRef.current) {
 																								fileInputRef.current.value = "";
-																							}
-																							if (field.value === uploadPreview) {
-																								field.onChange("");
 																							}
 																						}}
 																						className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 hover:bg-destructive/90"

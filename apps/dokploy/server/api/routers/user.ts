@@ -316,6 +316,46 @@ export const userRouter = createTRPCRouter({
 					})
 					.where(eq(account.userId, ctx.user.id));
 			}
+
+			// If image is being cleared (empty string), delete the uploaded file from server
+			if (input.image === "" || input.image === null || input.image === undefined) {
+				const currentUser = await findUserById(ctx.user.id);
+				const oldImagePath = currentUser?.image;
+
+				// If user had an uploaded avatar, delete it from the server
+				if (oldImagePath && oldImagePath.startsWith("/avatars/uploads/")) {
+					try {
+						// Determine the correct path to public directory
+						let publicDir: string;
+
+						const dirnamePublicDir = path.resolve(__dirname, "../../../public");
+						if (fs.existsSync(dirnamePublicDir)) {
+							publicDir = dirnamePublicDir;
+						} else {
+							const appPublicDir = path.join(process.cwd(), "public");
+							if (fs.existsSync(appPublicDir)) {
+								publicDir = appPublicDir;
+							} else {
+								const monorepoPublicDir = path.join(
+									process.cwd(),
+									"apps/dokploy/public",
+								);
+								publicDir = monorepoPublicDir;
+							}
+						}
+
+						const oldFilePath = path.join(publicDir, oldImagePath);
+						if (fs.existsSync(oldFilePath)) {
+							fs.unlinkSync(oldFilePath);
+							console.log(`Deleted uploaded avatar: ${oldFilePath}`);
+						}
+					} catch (error) {
+						// Log but don't fail if cleanup fails
+						console.error("Failed to delete uploaded avatar:", error);
+					}
+				}
+			}
+
 			return await updateUser(ctx.user.id, input);
 		}),
 	getUserByToken: publicProcedure
