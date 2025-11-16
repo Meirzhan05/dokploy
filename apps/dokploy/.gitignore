@@ -57,3 +57,6 @@ yarn-error.log*
 *.lockb
 *.rdb
 .idea
+
+# User uploaded avatars
+public/avatars/uploads/

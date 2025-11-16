@@ -22,9 +22,9 @@ import { Switch } from "@/components/ui/switch";
 import { generateSHA256Hash } from "@/lib/utils";
 import { api } from "@/utils/api";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, User } from "lucide-react";
+import { Loader2, Upload, User, X } from "lucide-react";
 import { useTranslation } from "next-i18next";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -75,8 +75,16 @@ export const ProfileForm = () => {
 		isError,
 		error,
 	} = api.user.update.useMutation();
+	const {
+		mutateAsync: uploadProfilePicture,
+		isLoading: isUploading,
+	} = api.user.uploadProfilePicture.useMutation();
 	const { t } = useTranslation("settings");
 	const [gravatarHash, setGravatarHash] = useState<string | null>(null);
+	const [uploadPreview, setUploadPreview] = useState<string | null>(null);
+	const [selectedFile, setSelectedFile] = useState<File | null>(null);
+	const fileInputRef = useRef<HTMLInputElement>(null);
+	const uploadedAvatarRemovedRef = useRef<boolean>(false);
 
 	const availableAvatars = useMemo(() => {
 		if (gravatarHash === null) return randomImages;
@@ -99,12 +107,13 @@ export const ProfileForm = () => {
 
 	useEffect(() => {
 		if (data) {
+			const userImage = data?.user?.image || "";
 			form.reset(
 				{
 					name: data?.user?.name || "",
 					email: data?.user?.email || "",
 					password: form.getValues("password") || "",
-					image: data?.user?.image || "",
+					image: userImage,
 					currentPassword: form.getValues("currentPassword") || "",
 					allowImpersonation: data?.user?.allowImpersonation,
 				},
@@ -114,6 +123,24 @@ export const ProfileForm = () => {
 			);
 			form.setValue("allowImpersonation", data?.user?.allowImpersonation);
 
+			// If user has an uploaded image, set it as preview
+			// Don't clear preview if it's a data URL (user just selected a file)
+			if (userImage && userImage.startsWith("/avatars/uploads/")) {
+				setUploadPreview(userImage);
+				uploadedAvatarRemovedRef.current = false;
+			} else {
+				// Only clear preview if it's not a data URL (data URLs are from file selection)
+				// This prevents clearing the preview when user just selected a file
+				setUploadPreview((prev) => {
+					// If previous preview is a data URL, keep it (user just selected a file)
+					if (prev && prev.startsWith("data:")) {
+						return prev;
+					}
+					// Otherwise, clear it
+					return null;
+				});
+			}
+
 			if (data.user.email) {
 				generateSHA256Hash(data.user.email).then((hash) => {
 					setGravatarHash(hash);
@@ -122,7 +149,68 @@ export const ProfileForm = () => {
 		}
 	}, [form, data]);
 
+	const handleFileSelect = async (file: File | null) => {
+		if (!file) {
+			setSelectedFile(null);
+			setUploadPreview(null);
+			return;
+		}
+
+		// Validate file size (2MB max)
+		const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+		if (file.size > MAX_FILE_SIZE) {
+			toast.error("Image size must be less than 2MB");
+			return;
+		}
+
+		// Validate file type
+		const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
+		if (!allowedTypes.includes(file.type)) {
+			toast.error("Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed");
+			return;
+		}
+
+		setSelectedFile(file);
+
+		// Create preview
+		const reader = new FileReader();
+		reader.onloadend = () => {
+			setUploadPreview(reader.result as string);
+		};
+		reader.readAsDataURL(file);
+	};
+
+	const handleUpload = async () => {
+		if (!selectedFile) return;
+
+		try {
+			const formData = new FormData();
+			formData.append("image", selectedFile);
+
+			const result = await uploadProfilePicture(formData);
+			if (result?.imagePath) {
+				form.setValue("image", result.imagePath);
+				setUploadPreview(result.imagePath);
+				uploadedAvatarRemovedRef.current = false;
+				toast.success("Profile picture uploaded successfully");
+				setSelectedFile(null);
+				if (fileInputRef.current) {
+					fileInputRef.current.value = "";
+				}
+			}
+		} catch (error) {
+			toast.error("Failed to upload profile picture");
+		}
+	};
+
 	const onSubmit = async (values: Profile) => {
+		// If there's a selected file but not uploaded yet, upload it first
+		if (selectedFile && !uploadPreview?.includes("/avatars/uploads/")) {
+			await handleUpload();
+			// Wait a bit for the form value to update
+			await new Promise((resolve) => setTimeout(resolve, 100));
+		}
+
 		await mutateAsync({
 			name: values.name,
 			email: values.email.toLowerCase(),
@@ -141,6 +229,8 @@ export const ProfileForm = () => {
 					image: values.image,
 					currentPassword: "",
 				});
+				setSelectedFile(null);
+				setUploadPreview(null);
 			})
 			.catch(() => {
 				toast.error("Error updating the profile");
@@ -259,34 +349,200 @@ export const ProfileForm = () => {
 															{t("settings.profile.avatar")}
 														</FormLabel>
 														<FormControl>
-															<RadioGroup
-																onValueChange={(e) => {
-																	field.onChange(e);
-																}}
-																defaultValue={field.value}
-																value={field.value}
-																className="flex flex-row flex-wrap gap-2 max-xl:justify-center"
-															>
-																{availableAvatars.map((image) => (
-																	<FormItem key={image}>
-																		<FormLabel className="[&:has([data-state=checked])>img]:border-primary [&:has([data-state=checked])>img]:border-1 [&:has([data-state=checked])>img]:p-px cursor-pointer">
-																			<FormControl>
-																				<RadioGroupItem
-																					value={image}
-																					className="sr-only"
-																				/>
-																			</FormControl>
+															<div className="space-y-4">
+																<RadioGroup
+																	onValueChange={(e) => {
+																		field.onChange(e);
+																		// If selecting an uploaded avatar, set uploadPreview to keep it visible
+																		if (e.startsWith("/avatars/uploads/")) {
+																			setUploadPreview(e);
+																			setSelectedFile(null);
+																			uploadedAvatarRemovedRef.current = false;
+																		} else {
+																			// When selecting predefined avatars, only clear temporary data URL previews
+																			// Keep uploaded avatar previews visible so user can switch back
+																			setSelectedFile(null);
+																			setUploadPreview((prev) => {
+																				// If user explicitly removed uploaded avatar, don't restore it
+																				if (uploadedAvatarRemovedRef.current) {
+																					return null;
+																				}
+																				// Keep uploaded avatar paths visible (from database or just uploaded)
+																				if (prev && prev.startsWith("/avatars/uploads/")) {
+																					return prev;
+																				}
+																				// Only restore from database if form field still has an uploaded avatar value
+																				// This means user didn't explicitly remove it (clicked X)
+																				const currentFormValue = field.value || "";
+																				if (
+																					currentFormValue &&
+																					currentFormValue.startsWith("/avatars/uploads/")
+																				) {
+																					return currentFormValue;
+																				}
+																				// Also check database, but only if form value is empty (not explicitly cleared)
+																				const userImage = data?.user?.image || "";
+																				if (
+																					!currentFormValue &&
+																					userImage &&
+																					userImage.startsWith("/avatars/uploads/")
+																				) {
+																					return userImage;
+																				}
+																				// Clear temporary data URL previews
+																				return null;
+																			});
+																			if (fileInputRef.current) {
+																				fileInputRef.current.value = "";
+																			}
+																		}
+																	}}
+																	defaultValue={field.value}
+																	value={field.value}
+																	className="flex flex-row flex-wrap gap-2 max-xl:justify-center"
+																>
+																	{availableAvatars.map((image) => (
+																		<FormItem key={image}>
+																			<FormLabel className="[&:has([data-state=checked])>img]:border-primary [&:has([data-state=checked])>img]:border-1 [&:has([data-state=checked])>img]:p-px cursor-pointer">
+																				<FormControl>
+																					<RadioGroupItem
+																						value={image}
+																						className="sr-only"
+																					/>
+																				</FormControl>
 
-																			<img
-																				key={image}
-																				src={image}
-																				alt="avatar"
-																				className="h-12 w-12 rounded-full border hover:p-px hover:border-primary transition-transform"
-																			/>
+																				<img
+																					key={image}
+																					src={image}
+																					alt="avatar"
+																					className="h-12 w-12 rounded-full border hover:p-px hover:border-primary transition-transform"
+																				/>
+																			</FormLabel>
+																		</FormItem>
+																	))}
+																	{/* Upload Option */}
+																	{uploadPreview && uploadPreview.startsWith("/avatars/uploads/") && (
+																		<FormItem>
+																			<FormLabel className="[&:has([data-state=checked])>div>img]:border-primary [&:has([data-state=checked])>div>img]:border-1 [&:has([data-state=checked])>div>img]:p-px cursor-pointer">
+																				<FormControl>
+																					<RadioGroupItem
+																						value={uploadPreview!}
+																						className="sr-only"
+																					/>
+																				</FormControl>
+																				<div className="relative">
+																					<img
+																						src={uploadPreview!}
+																						alt="Uploaded avatar"
+																						className="h-12 w-12 rounded-full border object-cover hover:p-px hover:border-primary transition-transform"
+																					/>
+																					<button
+																						type="button"
+																						onClick={async (e) => {
+																							e.stopPropagation();
+																							
+																							// Get current form values to preserve other fields
+																							const currentValues = form.getValues();
+																							
+																							// Immediately delete the uploaded avatar from server and database
+																							try {
+																								await mutateAsync({
+																									name: currentValues.name,
+																									email: currentValues.email,
+																									image: "", // Clear the image
+																									allowImpersonation: currentValues.allowImpersonation,
+																								});
+																								
+																								// Update UI state
+																								setSelectedFile(null);
+																								setUploadPreview(null);
+																								uploadedAvatarRemovedRef.current = true;
+																								field.onChange("");
+																								
+																								// Refresh data to reflect the change
+																								await refetch();
+																								toast.success("Uploaded avatar removed");
+																							} catch (error) {
+																								toast.error("Failed to remove uploaded avatar");
+																							}
+																							
+																							if (fileInputRef.current) {
+																								fileInputRef.current.value = "";
+																							}
+																						}}
+																						className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 hover:bg-destructive/90"
+																					>
+																						<X className="h-3 w-3" />
+																					</button>
+																				</div>
+																			</FormLabel>
+																		</FormItem>
+																	)}
+																	{/* Upload Button */}
+																	<FormItem>
+																		<FormLabel className="cursor-pointer">
+																			<div className="relative">
+																				<input
+																					ref={fileInputRef}
+																					type="file"
+																					accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+																					className="hidden"
+																					onChange={(e) => {
+																						const file = e.target.files?.[0] || null;
+																						handleFileSelect(file);
+																					}}
+																				/>
+																				{uploadPreview && !uploadPreview.startsWith("/avatars/uploads/") ? (
+																					<div className="relative">
+																						<img
+																							src={uploadPreview}
+																							alt="Upload preview"
+																							className="h-12 w-12 rounded-full border object-cover hover:p-px hover:border-primary transition-transform"
+																						/>
+																						<button
+																							type="button"
+																							onClick={(e) => {
+																								e.stopPropagation();
+																								setSelectedFile(null);
+																								setUploadPreview(null);
+																								if (fileInputRef.current) {
+																									fileInputRef.current.value = "";
+																								}
+																							}}
+																							className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 hover:bg-destructive/90"
+																						>
+																							<X className="h-3 w-3" />
+																						</button>
+																					</div>
+																				) : (
+																					<button
+																						type="button"
+																						onClick={() => fileInputRef.current?.click()}
+																						className="h-12 w-12 rounded-full border-2 border-dashed border-muted-foreground/50 hover:border-primary hover:bg-muted/50 flex items-center justify-center transition-colors"
+																					>
+																						<Upload className="h-5 w-5 text-muted-foreground" />
+																					</button>
+																				)}
+																			</div>
 																		</FormLabel>
 																	</FormItem>
-																))}
-															</RadioGroup>
+																</RadioGroup>
+																{selectedFile && uploadPreview && !uploadPreview.startsWith("/avatars/uploads/") && (
+																	<div className="flex items-center gap-2">
+																		<span className="text-sm text-muted-foreground">
+																			{selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+																		</span>
+																		<Button
+																			type="button"
+																			size="sm"
+																			onClick={handleUpload}
+																			isLoading={isUploading}
+																		>
+																			Upload
+																		</Button>
+																	</div>
+																)}
+															</div>
 														</FormControl>
 														<FormMessage />
 													</FormItem>

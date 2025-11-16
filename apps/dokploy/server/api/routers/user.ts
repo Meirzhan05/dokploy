@@ -24,12 +24,16 @@ import { TRPCError } from "@trpc/server";
 import * as bcrypt from "bcrypt";
 import { and, asc, eq, gt } from "drizzle-orm";
 import { z } from "zod";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import {
 	adminProcedure,
 	createTRPCRouter,
 	protectedProcedure,
 	publicProcedure,
+	uploadProcedure,
 } from "../trpc";
+import { uploadProfilePictureSchema } from "@/utils/schema";
 
 const apiCreateApiKey = z.object({
 	name: z.string().min(1),
@@ -142,6 +146,144 @@ export const userRouter = createTRPCRouter({
 
 		return memberResult?.user;
 	}),
+	uploadProfilePicture: protectedProcedure
+		.use(uploadProcedure)
+		.input(uploadProfilePictureSchema)
+		.mutation(async ({ input, ctx }) => {
+			const imageFile = input.image;
+
+			// Validate file size (2MB max)
+			const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB in bytes
+			if (imageFile.size > MAX_FILE_SIZE) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Image size must be less than 2MB",
+				});
+			}
+
+			// Validate file type
+			const allowedMimeTypes = [
+				"image/jpeg",
+				"image/jpg",
+				"image/png",
+				"image/gif",
+				"image/webp",
+			];
+			if (!allowedMimeTypes.includes(imageFile.type)) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed",
+				});
+			}
+
+			try {
+				// Get the current user to check for existing custom avatar
+				const currentUser = await findUserById(ctx.user.id);
+				const oldImagePath = currentUser?.image;
+
+				// Determine the correct path to public directory
+				// Use __dirname to get the file location, then resolve relative to it
+				// __dirname in compiled code points to dist/server/api/routers
+				// In source code, it points to server/api/routers
+				// We need to go up to the app root (apps/dokploy)
+				let publicDir: string;
+				let uploadsDir: string;
+
+				// Try multiple strategies to find the public directory
+				// Strategy 1: Use __dirname (most reliable)
+				const dirnamePublicDir = path.resolve(__dirname, "../../../public");
+				if (fs.existsSync(dirnamePublicDir)) {
+					publicDir = dirnamePublicDir;
+					uploadsDir = path.join(dirnamePublicDir, "avatars/uploads");
+				} else {
+					// Strategy 2: Check if process.cwd() is the app directory
+					const appPublicDir = path.join(process.cwd(), "public");
+					if (fs.existsSync(appPublicDir)) {
+						publicDir = appPublicDir;
+						uploadsDir = path.join(appPublicDir, "avatars/uploads");
+					} else {
+						// Strategy 3: Check if process.cwd() is the monorepo root
+						const monorepoPublicDir = path.join(
+							process.cwd(),
+							"apps/dokploy/public",
+						);
+						if (fs.existsSync(monorepoPublicDir)) {
+							publicDir = monorepoPublicDir;
+							uploadsDir = path.join(monorepoPublicDir, "avatars/uploads");
+						} else {
+							// Final fallback: use __dirname and create if needed
+							publicDir = dirnamePublicDir;
+							uploadsDir = path.join(dirnamePublicDir, "avatars/uploads");
+						}
+					}
+				}
+
+				console.log("Public Dir:", publicDir);
+				console.log("Upload Dir:", uploadsDir);
+
+				// Create uploads directory if it doesn't exist
+				if (!fs.existsSync(uploadsDir)) {
+					fs.mkdirSync(uploadsDir, { recursive: true });
+				}
+
+				// Verify directory was created
+				if (!fs.existsSync(uploadsDir)) {
+					throw new Error(
+						`Failed to create uploads directory at: ${uploadsDir}`,
+					);
+				}
+
+				// Generate unique filename
+				const fileExtension = path.extname(imageFile.name) || ".jpg";
+				const timestamp = Date.now();
+				const randomString = Math.random().toString(36).substring(2, 15);
+				const fileName = `${ctx.user.id}-${timestamp}-${randomString}${fileExtension}`;
+				const filePath = path.join(uploadsDir, fileName);
+
+				// Convert File to Buffer and write to disk
+				const arrayBuffer = await imageFile.arrayBuffer();
+				const buffer = Buffer.from(arrayBuffer);
+				fs.writeFileSync(filePath, buffer);
+
+				// Verify file was written
+				if (!fs.existsSync(filePath)) {
+					throw new Error(`Failed to write file to: ${filePath}`);
+				}
+
+				console.log(`Avatar uploaded successfully to: ${filePath}`);
+
+				// Generate the public URL path
+				const publicPath = `/avatars/uploads/${fileName}`;
+
+				// Clean up old custom avatar if it exists and is in the uploads directory
+				if (
+					oldImagePath &&
+					oldImagePath.startsWith("/avatars/uploads/") &&
+					oldImagePath !== publicPath
+				) {
+					const oldFilePath = path.join(publicDir, oldImagePath);
+					if (fs.existsSync(oldFilePath)) {
+						try {
+							fs.unlinkSync(oldFilePath);
+							console.log(`Deleted old avatar: ${oldFilePath}`);
+						} catch (error) {
+							// Log but don't fail if cleanup fails
+							console.error("Failed to delete old avatar:", error);
+						}
+					}
+				}
+
+				return { imagePath: publicPath };
+			} catch (error) {
+				console.error("Error uploading profile picture:", error);
+				const errorMessage =
+					error instanceof Error ? error.message : "Unknown error";
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message: `Failed to upload profile picture: ${errorMessage}`,
+				});
+			}
+		}),
 	update: protectedProcedure
 		.input(apiUpdateUser)
 		.mutation(async ({ input, ctx }) => {
@@ -174,6 +316,46 @@ export const userRouter = createTRPCRouter({
 					})
 					.where(eq(account.userId, ctx.user.id));
 			}
+
+			// If image is being cleared (empty string), delete the uploaded file from server
+			if (input.image === "" || input.image === null || input.image === undefined) {
+				const currentUser = await findUserById(ctx.user.id);
+				const oldImagePath = currentUser?.image;
+
+				// If user had an uploaded avatar, delete it from the server
+				if (oldImagePath && oldImagePath.startsWith("/avatars/uploads/")) {
+					try {
+						// Determine the correct path to public directory
+						let publicDir: string;
+
+						const dirnamePublicDir = path.resolve(__dirname, "../../../public");
+						if (fs.existsSync(dirnamePublicDir)) {
+							publicDir = dirnamePublicDir;
+						} else {
+							const appPublicDir = path.join(process.cwd(), "public");
+							if (fs.existsSync(appPublicDir)) {
+								publicDir = appPublicDir;
+							} else {
+								const monorepoPublicDir = path.join(
+									process.cwd(),
+									"apps/dokploy/public",
+								);
+								publicDir = monorepoPublicDir;
+							}
+						}
+
+						const oldFilePath = path.join(publicDir, oldImagePath);
+						if (fs.existsSync(oldFilePath)) {
+							fs.unlinkSync(oldFilePath);
+							console.log(`Deleted uploaded avatar: ${oldFilePath}`);
+						}
+					} catch (error) {
+						// Log but don't fail if cleanup fails
+						console.error("Failed to delete uploaded avatar:", error);
+					}
+				}
+			}
+
 			return await updateUser(ctx.user.id, input);
 		}),
 	getUserByToken: publicProcedure
